@@ -67,9 +67,8 @@ class FloorPlanApp {
     this.canvas.on('object:rotating', updateWallVisuals);
 
     // Right-click cancels any active tool (except select) and returns to select
-    this.canvas.upperCanvasEl.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      if (this.activeTool !== 'select') {
+    this.canvas.on('mouse:down', (opt) => {
+      if (opt.e.button === 2 && this.activeTool !== 'select') {
         this.cancelCurrentTool();
         this.setTool('select');
       }
