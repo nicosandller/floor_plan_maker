@@ -14,6 +14,7 @@ export class WallTool {
 
     this.onMouseDown = this.onMouseDown.bind(this);
     this.onMouseMove = this.onMouseMove.bind(this);
+    this.onContextMenu = this.onContextMenu.bind(this);
 
     // Listen for wall label edits globally
     this.setupLabelEditListener();
@@ -32,13 +33,29 @@ export class WallTool {
 
     canvas.on('mouse:down', this.onMouseDown);
     canvas.on('mouse:move', this.onMouseMove);
+
+    // Right-click to cancel current wall segment
+    canvas.upperCanvasEl.addEventListener('contextmenu', this.onContextMenu);
   }
 
   deactivate() {
     const canvas = this.app.canvas;
     canvas.off('mouse:down', this.onMouseDown);
     canvas.off('mouse:move', this.onMouseMove);
+    canvas.upperCanvasEl.removeEventListener('contextmenu', this.onContextMenu);
     this.cancel();
+  }
+
+  /**
+   * Right-click cancels the current wall segment and stops drawing.
+   */
+  onContextMenu(e) {
+    e.preventDefault();
+    if (this.isDrawing) {
+      this.cancel();
+      // Return to select tool
+      this.app.setTool('select');
+    }
   }
 
   onMouseDown(opt) {

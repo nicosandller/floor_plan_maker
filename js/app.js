@@ -9,7 +9,6 @@ import { WallTool } from './tools/wall-tool.js';
 import { ShapeTool } from './tools/shape-tool.js';
 import { TextTool, DimensionTool } from './tools/text-tool.js';
 import { WindowTool } from './tools/window-tool.js';
-import { PanTool } from './tools/pan-tool.js';
 import { Toolbar } from './ui/toolbar.js';
 import { LeftPanel } from './ui/left-panel.js';
 import { RightPanel } from './ui/right-panel.js';
@@ -113,7 +112,6 @@ class FloorPlanApp {
       line: new ShapeTool(this),
       text: new TextTool(this),
       window: new WindowTool(this),
-      pan: new PanTool(this),
       dimension: new DimensionTool(this),
     };
   }
@@ -190,6 +188,17 @@ class FloorPlanApp {
         }
       });
     }
+
+    // Refresh endpoint handles if a wall is selected (rescale to new zoom)
+    const selectTool = this.tools && this.tools.select;
+    if (selectTool && selectTool.endpointHandles.length > 0) {
+      const active = this.canvas.getActiveObject();
+      if (active && active.isWall) {
+        selectTool.clearEndpointHandles();
+        selectTool.showEndpointHandles(active);
+      }
+    }
+
     this.canvas.requestRenderAll();
   }
 }
