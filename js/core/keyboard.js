@@ -79,21 +79,38 @@ export class KeyboardManager {
     const active = canvas.getActiveObjects();
     if (active.length === 0) return;
     let hasWall = false;
+
+    // Collect walls and their labels first
+    const toRemove = [];
     active.forEach(obj => {
-      if (!obj.isGrid && !obj.isWallVisual && !obj.isEndpointHandle) {
-        if (obj.isWall) {
-          hasWall = true;
-          // Also remove attached dimension label
-          if (obj.dimLabel) {
-            canvas.remove(obj.dimLabel);
-          }
+      if (obj.isGrid || obj.isWallVisual || obj.isEndpointHandle) return;
+      // Skip dimension labels — they'll be removed with their wall
+      if (obj.customType === 'wallDimension') return;
+
+      if (obj.isWall) {
+        hasWall = true;
+        // Queue the wall's attached label for removal
+        if (obj.dimLabel && obj.dimLabel.canvas) {
+          toRemove.push(obj.dimLabel);
+          obj.dimLabel = null;
         }
-        // If deleting a wall dimension label, don't delete the wall itself
-        if (obj.customType === 'wallDimension') return;
-        canvas.remove(obj);
       }
+      toRemove.push(obj);
     });
+
     canvas.discardActiveObject();
+    for (const obj of toRemove) {
+      canvas.remove(obj);
+    }
+
+    // Safety sweep: remove any orphaned dimension labels whose wall is gone
+    const orphanedLabels = canvas.getObjects().filter(obj =>
+      obj.customType === 'wallDimension' && (!obj.wallRef || !obj.wallRef.canvas)
+    );
+    for (const label of orphanedLabels) {
+      canvas.remove(label);
+    }
+
     if (hasWall) this.app.rebuildWalls();
     canvas.renderAll();
     this.app.history.saveState();

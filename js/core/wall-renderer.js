@@ -2,17 +2,20 @@
  * WallRenderer
  *
  * Finds connected wall segments, groups them into chains, and draws each
- * chain as a single thick `fabric.Polyline` with `strokeLineJoin: 'miter'`.
+ * chain as a single thick stroke with `strokeLineJoin: 'miter'`.
+ *
+ * - Open chains → fabric.Polyline
+ * - Closed loops → fabric.Polygon  (proper miter join at the closing corner)
  *
  * Individual wall Rect objects become invisible hit-targets (selectable but
- * visually hidden). The polyline provides the unified perimeter look.
+ * visually hidden). The polyline/polygon provides the unified perimeter look.
  *
  * Call `rebuild()` after any wall is added, removed, or modified.
  */
 export class WallRenderer {
   constructor(app) {
     this.app = app;
-    this.visualObjects = [];    // polyline + label fabric objects
+    this.visualObjects = [];    // polyline/polygon fabric objects
     this.SNAP_THRESHOLD = 3;    // px — how close endpoints must be to merge
   }
 
@@ -42,22 +45,43 @@ export class WallRenderer {
     // 4. Build a node graph and find chains of connected segments
     const chains = this.findChains(segments);
 
-    // 5. Draw each chain as a thick polyline with miter joins
+    // 5. Draw each chain — use Polygon for closed loops, Polyline for open chains
     for (const chain of chains) {
-      const polyline = new fabric.Polyline(chain, {
-        fill:             'transparent',
-        stroke:           this.app.wallColor,
-        strokeWidth:      thickness,
-        strokeLineJoin:   'miter',
-        strokeMiterLimit: 20,
-        strokeLineCap:    'butt',
-        selectable:       false,
-        evented:          false,
-        isWallVisual:     true,
-        objectCaching:    false,
-      });
-      canvas.add(polyline);
-      this.visualObjects.push(polyline);
+      const isClosed = chain.length >= 4 &&
+        Math.hypot(chain[0].x - chain[chain.length - 1].x,
+                   chain[0].y - chain[chain.length - 1].y) < this.SNAP_THRESHOLD;
+
+      let visual;
+      if (isClosed) {
+        // Remove the duplicate closing point — Polygon closes automatically
+        const pts = chain.slice(0, -1);
+        visual = new fabric.Polygon(pts, {
+          fill:             'transparent',
+          stroke:           this.app.wallColor,
+          strokeWidth:      thickness,
+          strokeLineJoin:   'miter',
+          strokeMiterLimit: 20,
+          selectable:       false,
+          evented:          false,
+          isWallVisual:     true,
+          objectCaching:    false,
+        });
+      } else {
+        visual = new fabric.Polyline(chain, {
+          fill:             'transparent',
+          stroke:           this.app.wallColor,
+          strokeWidth:      thickness,
+          strokeLineJoin:   'miter',
+          strokeMiterLimit: 20,
+          strokeLineCap:    'butt',
+          selectable:       false,
+          evented:          false,
+          isWallVisual:     true,
+          objectCaching:    false,
+        });
+      }
+      canvas.add(visual);
+      this.visualObjects.push(visual);
     }
 
     // 6. Make individual wall rects invisible but keep them selectable
@@ -73,7 +97,7 @@ export class WallRenderer {
         borderColor: '#6c8eef',
         cornerColor: '#6c8eef',
         cornerSize:  6,
-        padding:     Math.max(thickness / 2, 4),   // generous hit area
+        padding:     2,   // small padding to avoid overlapping hit areas
       });
     });
 
@@ -133,10 +157,11 @@ export class WallRenderer {
    * Groups wall segments into chains of connected points.
    *
    * 1. Merge nearby endpoints into shared *nodes*.
-   * 2. Build an adjacency graph of segments ↔ nodes.
+   * 2. Build an adjacency graph of segments <-> nodes.
    * 3. Walk from degree-1 nodes (ends) outward, then handle cycles.
    *
    * Returns an array of chains; each chain is an array of {x, y} points.
+   * Closed loops will have first point repeated at the end.
    */
   findChains(segments) {
     const T = this.SNAP_THRESHOLD;
@@ -227,6 +252,11 @@ export class WallRenderer {
 
           // At a branch (degree > 2), stop — don't walk through intersections
           if (next.segRefs.length > 2) {
+            break;
+          }
+
+          // If we've returned to the start node, close the loop
+          if (next === startNode) {
             break;
           }
 
