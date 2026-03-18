@@ -47,18 +47,24 @@ class FloorPlanApp {
       this.history.saveState();
     });
 
-    // Keep wall labels positioned when walls are moved, scaled, or rotated
-    const updateLabelOnChange = (e) => {
+    // Keep wall labels and endpoint handles positioned when walls are moved, scaled, or rotated
+    const updateWallVisuals = (e) => {
       if (e.target && e.target.isWall) {
         const wallTool = this.tools.wall;
         if (wallTool && wallTool.updateWallLabel) {
           wallTool.updateWallLabel(e.target);
         }
+        // Refresh endpoint handles so they track the wall's new position
+        const selectTool = this.tools && this.tools.select;
+        if (selectTool && selectTool.endpointHandles.length > 0) {
+          selectTool.clearEndpointHandles();
+          selectTool.showEndpointHandles(e.target);
+        }
       }
     };
-    this.canvas.on('object:moving', updateLabelOnChange);
-    this.canvas.on('object:scaling', updateLabelOnChange);
-    this.canvas.on('object:rotating', updateLabelOnChange);
+    this.canvas.on('object:moving', updateWallVisuals);
+    this.canvas.on('object:scaling', updateWallVisuals);
+    this.canvas.on('object:rotating', updateWallVisuals);
 
     // Right-click cancels any active tool (except select) and returns to select
     this.canvas.upperCanvasEl.addEventListener('contextmenu', (e) => {
@@ -69,9 +75,17 @@ class FloorPlanApp {
       }
     });
 
-    // Rebuild walls when an object is removed
+    // Rebuild walls when an object is removed, and clean up its dimension label
     this.canvas.on('object:removed', (e) => {
       if (e.target && e.target.isWall) {
+        // Remove attached dimension label if it's still on the canvas
+        if (e.target.dimLabel) {
+          const label = e.target.dimLabel;
+          e.target.dimLabel = null;
+          if (label.canvas) {
+            this.canvas.remove(label);
+          }
+        }
         // Defer so the removal completes first
         setTimeout(() => this.rebuildWalls(), 0);
       }
@@ -90,6 +104,8 @@ class FloorPlanApp {
       backgroundColor: '#1a1a2e',
       selection: true,
       preserveObjectStacking: true,
+      fireRightClick: true,
+      stopContextMenu: true,
     });
 
     // Resize observer

@@ -3,7 +3,7 @@ export class SelectTool {
     this.app = app;
     this.endpointHandles = [];  // green + circles shown on selected wall
 
-    // Pan-on-empty-canvas state
+    // Pan state (right-click drag)
     this.isPanning = false;
     this.lastPanX = 0;
     this.lastPanY = 0;
@@ -48,13 +48,15 @@ export class SelectTool {
   }
 
   /* ------------------------------------------------------------------ */
-  /*  Pan-on-empty-canvas                                               */
+  /*  Mouse handlers                                                     */
   /* ------------------------------------------------------------------ */
 
   onMouseDown(opt) {
     const canvas = this.app.canvas;
-    // If we clicked an endpoint handle, start a new wall from it
-    if (opt.target && opt.target.isEndpointHandle) {
+    const e = opt.e;
+
+    // Left-click on endpoint handle → start a new wall from it
+    if (opt.target && opt.target.isEndpointHandle && e.button === 0) {
       const pt = { x: opt.target.epX, y: opt.target.epY };
       this.clearEndpointHandles();
       canvas.discardActiveObject();
@@ -66,14 +68,17 @@ export class SelectTool {
       return;
     }
 
-    // If clicking empty canvas (no target), start panning
-    if (!opt.target || opt.target.isGrid) {
+    // Right-click → start panning
+    if (e.button === 2) {
       this.isPanning = true;
-      this.lastPanX = opt.e.clientX;
-      this.lastPanY = opt.e.clientY;
+      this.lastPanX = e.clientX;
+      this.lastPanY = e.clientY;
       canvas.setCursor('grabbing');
       canvas.selection = false;
+      return;
     }
+
+    // Left-click on empty canvas does nothing special (normal fabric selection)
   }
 
   onMouseMove(opt) {
@@ -88,7 +93,7 @@ export class SelectTool {
     this.lastPanY = e.clientY;
   }
 
-  onMouseUp() {
+  onMouseUp(opt) {
     if (this.isPanning) {
       this.isPanning = false;
       this.app.canvas.setCursor('default');
