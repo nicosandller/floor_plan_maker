@@ -68,6 +68,7 @@ export class KeyboardManager {
           case 'l': this.app.setTool('line'); break;
           case 't': this.app.setTool('text'); break;
           case 'n': this.app.setTool('window'); break;
+          case 'h': this.app.setTool('pan'); break;
           case 'd': this.app.setTool('dimension'); break;
         }
       }
@@ -81,7 +82,15 @@ export class KeyboardManager {
     let hasWall = false;
     active.forEach(obj => {
       if (!obj.isGrid && !obj.isWallVisual) {
-        if (obj.isWall) hasWall = true;
+        if (obj.isWall) {
+          hasWall = true;
+          // Also remove attached dimension label
+          if (obj.dimLabel) {
+            canvas.remove(obj.dimLabel);
+          }
+        }
+        // If deleting a wall dimension label, don't delete the wall itself
+        if (obj.customType === 'wallDimension') return;
         canvas.remove(obj);
       }
     });

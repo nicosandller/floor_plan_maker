@@ -14,6 +14,9 @@ export class WallTool {
 
     this.onMouseDown = this.onMouseDown.bind(this);
     this.onMouseMove = this.onMouseMove.bind(this);
+
+    // Listen for wall label edits globally
+    this.setupLabelEditListener();
   }
 
   activate() {
@@ -234,24 +237,13 @@ export class WallTool {
 
     canvas.add(wall);
 
-    // Dimension label (above the wall)
-    const labelOffset = thickness / 2 + 10;
-    const perpX = -Math.sin(angle) * labelOffset;
-    const perpY = Math.cos(angle) * labelOffset;
+    // Create attached dimension label (on the underside of the wall)
+    const dimLabel = this.createWallLabel(wall);
 
-    const dimLabel = new fabric.Text(lengthMm + '', {
-      left: midX + perpX,
-      top: midY + perpY,
-      fontSize: 10,
-      fill: '#888',
-      fontFamily: 'sans-serif',
-      angle: angleDeg,
-      originX: 'center',
-      originY: 'center',
-      selectable: false,
-      evented: false,
-      customType: 'wallDimension',
-    });
+    // Link wall and label to each other
+    wall.dimLabel = dimLabel;
+    dimLabel.wallRef = wall;
+
     canvas.add(dimLabel);
 
     // Rebuild the unified wall visuals (polylines with miter joins)
@@ -263,6 +255,207 @@ export class WallTool {
     // Continue wall from this endpoint (allows chain-drawing)
     this.startPoint = { x: endPt.x, y: endPt.y };
     // Keep isDrawing = true so user can continue clicking
+  }
+
+  /**
+   * Creates an IText label for a wall, positioned centered on its underside.
+   */
+  createWallLabel(wall) {
+    const scale = this.app.scale;
+    const thickness = this.app.wallThickness * scale;
+    const angle = (wall.angle || 0) * Math.PI / 180;
+    const midX = wall.left;
+    const midY = wall.top;
+    const lengthMm = wall.wallData.lengthMm;
+
+    // Offset to the underside (positive perpendicular direction)
+    const labelOffset = thickness / 2 + 12;
+    const perpX = -Math.sin(angle) * labelOffset;
+    const perpY = Math.cos(angle) * labelOffset;
+
+    // Normalise display angle so text is never upside-down
+    let displayAngle = wall.angle || 0;
+    while (displayAngle < 0) displayAngle += 360;
+    while (displayAngle >= 360) displayAngle -= 360;
+    if (displayAngle > 90 && displayAngle < 270) {
+      displayAngle += 180;
+    }
+
+    const dimLabel = new fabric.Text(lengthMm + '', {
+      left: midX + perpX,
+      top: midY + perpY,
+      fontSize: 12,
+      fill: '#bbb',
+      fontFamily: 'sans-serif',
+      angle: displayAngle,
+      originX: 'center',
+      originY: 'center',
+      selectable: true,
+      evented: true,
+      hasControls: false,
+      hasBorders: false,
+      lockMovementX: true,
+      lockMovementY: true,
+      lockRotation: true,
+      lockScalingX: true,
+      lockScalingY: true,
+      customType: 'wallDimension',
+      objectCaching: false,
+      hoverCursor: 'pointer',
+    });
+
+    return dimLabel;
+  }
+
+  /**
+   * Repositions a wall's dimension label after the wall has been moved/resized.
+   */
+  updateWallLabel(wall) {
+    const dimLabel = wall.dimLabel;
+    if (!dimLabel) return;
+
+    const scale = this.app.scale;
+    const thickness = this.app.wallThickness * scale;
+    const angle = (wall.angle || 0) * Math.PI / 180;
+    const midX = wall.left;
+    const midY = wall.top;
+
+    const labelOffset = thickness / 2 + 12;
+    const perpX = -Math.sin(angle) * labelOffset;
+    const perpY = Math.cos(angle) * labelOffset;
+
+    // Recalculate length from wall dimensions
+    const len = wall.width * (wall.scaleX || 1);
+    const lengthMm = Math.round(len / scale);
+    wall.wallData.lengthMm = lengthMm;
+
+    let displayAngle = wall.angle || 0;
+    while (displayAngle < 0) displayAngle += 360;
+    while (displayAngle >= 360) displayAngle -= 360;
+    if (displayAngle > 90 && displayAngle < 270) {
+      displayAngle += 180;
+    }
+
+    dimLabel.set({
+      left: midX + perpX,
+      top: midY + perpY,
+      angle: displayAngle,
+      text: lengthMm + '',
+    });
+    dimLabel.setCoords();
+  }
+
+  /**
+   * Listen for double-click on wall dimension labels to open edit popup.
+   */
+  setupLabelEditListener() {
+    const canvas = this.app.canvas;
+
+    canvas.on('mouse:dblclick', (opt) => {
+      const target = opt.target;
+      if (!target || target.customType !== 'wallDimension' || !target.wallRef) return;
+
+      this.openLabelEditor(target);
+    });
+  }
+
+  /**
+   * Opens the wall length popup editor for a dimension label.
+   */
+  openLabelEditor(label) {
+    const wall = label.wallRef;
+    const popup = document.getElementById('wall-input-popup');
+    const input = document.getElementById('wall-length-input');
+    const okBtn = document.getElementById('wall-length-ok');
+    const cancelBtn = document.getElementById('wall-length-cancel');
+
+    // Position popup near the label in screen coords
+    const canvas = this.app.canvas;
+    const zoom = canvas.getZoom();
+    const vpt = canvas.viewportTransform;
+    const screenX = label.left * zoom + vpt[4];
+    const screenY = label.top * zoom + vpt[5];
+    const container = document.getElementById('canvas-container');
+    const rect = container.getBoundingClientRect();
+
+    popup.style.left = Math.min(screenX, rect.width - 200) + 'px';
+    popup.style.top = Math.min(screenY + 20, rect.height - 50) + 'px';
+    popup.style.display = 'flex';
+    input.value = wall.wallData.lengthMm;
+    input.focus();
+    input.select();
+
+    const cleanup = () => {
+      popup.style.display = 'none';
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      input.removeEventListener('keydown', onKey);
+    };
+
+    const onOk = () => {
+      const newMm = parseInt(input.value, 10);
+      if (newMm && newMm > 0) {
+        this.resizeWallToLength(wall, newMm);
+        this.updateWallLabel(wall);
+        this.app.rebuildWalls();
+        canvas.renderAll();
+        this.app.history.saveState();
+      }
+      cleanup();
+    };
+
+    const onCancel = () => cleanup();
+
+    const onKey = (e) => {
+      if (e.key === 'Enter') onOk();
+      if (e.key === 'Escape') onCancel();
+    };
+
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+    input.addEventListener('keydown', onKey);
+  }
+
+  /**
+   * Resize a wall to a new length (in mm), extending from its start point
+   * along its original direction of travel.
+   */
+  resizeWallToLength(wall, newLengthMm) {
+    const scale = this.app.scale;
+    const newLenPx = newLengthMm * scale;
+    const angleRad = (wall.angle || 0) * Math.PI / 180;
+
+    // Compute start point (the end that was placed first)
+    const cx = wall.left;
+    const cy = wall.top;
+    const halfOldLen = (wall.width * (wall.scaleX || 1)) / 2;
+    const cosA = Math.cos(angleRad);
+    const sinA = Math.sin(angleRad);
+
+    // Start point is the "backward" end
+    const startX = cx - cosA * halfOldLen;
+    const startY = cy - sinA * halfOldLen;
+
+    // New end point
+    const endX = startX + cosA * newLenPx;
+    const endY = startY + sinA * newLenPx;
+
+    // New center
+    const newCx = (startX + endX) / 2;
+    const newCy = (startY + endY) / 2;
+
+    wall.set({
+      left: newCx,
+      top: newCy,
+      width: newLenPx,
+      scaleX: 1,
+    });
+    wall.setCoords();
+
+    // Update wallData
+    wall.wallData.lengthMm = newLengthMm;
+    wall.wallData.endX = Math.round(endX / scale);
+    wall.wallData.endY = Math.round(endY / scale);
   }
 
   /**

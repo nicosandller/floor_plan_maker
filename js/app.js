@@ -9,6 +9,7 @@ import { WallTool } from './tools/wall-tool.js';
 import { ShapeTool } from './tools/shape-tool.js';
 import { TextTool, DimensionTool } from './tools/text-tool.js';
 import { WindowTool } from './tools/window-tool.js';
+import { PanTool } from './tools/pan-tool.js';
 import { Toolbar } from './ui/toolbar.js';
 import { LeftPanel } from './ui/left-panel.js';
 import { RightPanel } from './ui/right-panel.js';
@@ -37,9 +38,24 @@ class FloorPlanApp {
     // Save state after object modifications and rebuild wall visuals
     this.canvas.on('object:modified', (e) => {
       if (e.target && e.target.isWall) {
+        // Update the attached dimension label position
+        const wallTool = this.tools.wall;
+        if (wallTool && wallTool.updateWallLabel) {
+          wallTool.updateWallLabel(e.target);
+        }
         this.rebuildWalls();
       }
       this.history.saveState();
+    });
+
+    // Keep wall labels positioned when walls are moved
+    this.canvas.on('object:moving', (e) => {
+      if (e.target && e.target.isWall) {
+        const wallTool = this.tools.wall;
+        if (wallTool && wallTool.updateWallLabel) {
+          wallTool.updateWallLabel(e.target);
+        }
+      }
     });
 
     // Rebuild walls when an object is removed
@@ -94,6 +110,7 @@ class FloorPlanApp {
       line: new ShapeTool(this),
       text: new TextTool(this),
       window: new WindowTool(this),
+      pan: new PanTool(this),
       dimension: new DimensionTool(this),
     };
   }

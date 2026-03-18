@@ -14,6 +14,7 @@ A browser-based architectural floor plan editor. Draw walls with real millimeter
 - **Smart snapping** — walls snap to grid points and to existing wall endpoints (50mm radius)
 - **Connected wall rendering** — adjacent walls share a unified perimeter with clean miter joins, while remaining individually editable
 - **Real measurements** — all dimensions displayed in millimeters, with configurable wall thickness (default 150mm)
+- **Editable dimension labels** — each wall shows its length (mm) on its underside; double-click a label to type a new length and the wall resizes along its original direction
 
 ### Furniture Library
 30+ pre-built items across 9 categories, ready to drag and drop onto your floor plan:
@@ -42,7 +43,8 @@ A browser-based architectural floor plan editor. Draw walls with real millimeter
 
 ### Canvas Controls
 - **Zoom** — mouse wheel to zoom in/out (centered on cursor)
-- **Pan** — hold Space + drag to navigate the canvas
+- **Pan tool** — dedicated hand tool (`H`) for click-drag canvas navigation
+- **Pan (alternate)** — hold Space + drag to navigate from any tool
 - **Grid** — configurable grid size with snap-to-grid (toggle on/off)
 - **Select & Edit** — click to select, drag to move, handles to resize/rotate
 
@@ -57,6 +59,7 @@ A browser-based architectural floor plan editor. Draw walls with real millimeter
 | `L` | Line tool |
 | `T` | Text tool |
 | `N` | Window tool |
+| `H` | Pan / Navigate tool |
 | `D` | Dimension tool |
 | `Delete` / `Backspace` | Delete selected |
 | `Ctrl+Z` | Undo |
@@ -118,7 +121,8 @@ floor_plan_maker/
 │   │   ├── wall-tool.js        # Free-angle wall drawing with snapping
 │   │   ├── shape-tool.js       # Rectangles, circles, lines
 │   │   ├── text-tool.js        # Room labels and dimension annotations
-│   │   └── window-tool.js      # Window insertion on walls
+│   │   ├── window-tool.js      # Window insertion on walls
+│   │   └── pan-tool.js         # Click-drag canvas navigation
 │   ├── furniture/
 │   │   ├── library.js          # Furniture definitions (categories, dims)
 │   │   └── renderer.js         # Factory functions for furniture graphics

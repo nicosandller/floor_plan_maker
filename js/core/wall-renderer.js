@@ -264,5 +264,10 @@ export class WallRenderer {
     canvas.getObjects().forEach(obj => {
       if (obj.isGrid) canvas.sendToBack(obj);
     });
+
+    // Bring dimension labels to front so they're always visible
+    canvas.getObjects().forEach(obj => {
+      if (obj.customType === 'wallDimension') canvas.bringToFront(obj);
+    });
   }
 }
