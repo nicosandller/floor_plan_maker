@@ -3,7 +3,7 @@ export class SelectTool {
     this.app = app;
     this.endpointHandles = [];  // green + circles shown on selected wall
 
-    // Pan state (right-click drag)
+    // Pan state (shift + left-click drag)
     this.isPanning = false;
     this.lastPanX = 0;
     this.lastPanY = 0;
@@ -68,17 +68,18 @@ export class SelectTool {
       return;
     }
 
-    // Right-click → start panning
-    if (e.button === 2) {
+    // Shift + left-click → start panning
+    if (e.button === 0 && e.shiftKey) {
       this.isPanning = true;
       this.lastPanX = e.clientX;
       this.lastPanY = e.clientY;
       canvas.setCursor('grabbing');
       canvas.selection = false;
+      canvas.discardActiveObject();
       return;
     }
 
-    // Left-click on empty canvas does nothing special (normal fabric selection)
+    // Plain left-click on empty canvas → normal fabric selection
   }
 
   onMouseMove(opt) {

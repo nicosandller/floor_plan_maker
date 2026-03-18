@@ -37,6 +37,7 @@ export class ShapeTool {
   }
 
   onMouseDown(opt) {
+    if (opt.e.button !== 0) return; // Only left-click
     if (this.app.zoomPan.spaceDown || this.app.zoomPan.isPanning) return;
 
     const canvas = this.app.canvas;
