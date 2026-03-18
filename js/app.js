@@ -48,15 +48,18 @@ class FloorPlanApp {
       this.history.saveState();
     });
 
-    // Keep wall labels positioned when walls are moved
-    this.canvas.on('object:moving', (e) => {
+    // Keep wall labels positioned when walls are moved, scaled, or rotated
+    const updateLabelOnChange = (e) => {
       if (e.target && e.target.isWall) {
         const wallTool = this.tools.wall;
         if (wallTool && wallTool.updateWallLabel) {
           wallTool.updateWallLabel(e.target);
         }
       }
-    });
+    };
+    this.canvas.on('object:moving', updateLabelOnChange);
+    this.canvas.on('object:scaling', updateLabelOnChange);
+    this.canvas.on('object:rotating', updateLabelOnChange);
 
     // Rebuild walls when an object is removed
     this.canvas.on('object:removed', (e) => {
@@ -159,6 +162,35 @@ class FloorPlanApp {
   updateZoomDisplay() {
     const zoom = this.canvas.getZoom();
     document.getElementById('zoom-level').textContent = Math.round(zoom * 100) + '%';
+    this.updateLabelScales();
+  }
+
+  /**
+   * Adjust wall dimension label font size so they always appear the same
+   * screen size regardless of zoom level.
+   */
+  updateLabelScales() {
+    const zoom = this.canvas.getZoom();
+    const baseFontSize = 12;   // desired screen-pixels size
+    const scaledSize = baseFontSize / zoom;
+
+    this.canvas.forEachObject(obj => {
+      if (obj.customType === 'wallDimension') {
+        obj.set({ fontSize: scaledSize });
+        obj.setCoords();
+      }
+    });
+
+    // Also update label offsets so they stay just outside the wall
+    const wallTool = this.tools && this.tools.wall;
+    if (wallTool) {
+      this.canvas.forEachObject(obj => {
+        if (obj.isWall && obj.dimLabel) {
+          wallTool.updateWallLabel(obj);
+        }
+      });
+    }
+    this.canvas.requestRenderAll();
   }
 }
 

@@ -262,14 +262,17 @@ export class WallTool {
    */
   createWallLabel(wall) {
     const scale = this.app.scale;
+    const zoom = this.app.canvas.getZoom();
     const thickness = this.app.wallThickness * scale;
     const angle = (wall.angle || 0) * Math.PI / 180;
     const midX = wall.left;
     const midY = wall.top;
     const lengthMm = wall.wallData.lengthMm;
 
-    // Offset to the underside (positive perpendicular direction)
-    const labelOffset = thickness / 2 + 12;
+    // Offset to the underside — scale gap inversely with zoom so it
+    // looks the same distance on-screen regardless of zoom level.
+    const gapPx = 10 / zoom;
+    const labelOffset = thickness / 2 + gapPx;
     const perpX = -Math.sin(angle) * labelOffset;
     const perpY = Math.cos(angle) * labelOffset;
 
@@ -281,10 +284,13 @@ export class WallTool {
       displayAngle += 180;
     }
 
+    // Font size is zoom-compensated so it always appears 12px on-screen
+    const fontSize = 12 / zoom;
+
     const dimLabel = new fabric.Text(lengthMm + '', {
       left: midX + perpX,
       top: midY + perpY,
-      fontSize: 12,
+      fontSize,
       fill: '#bbb',
       fontFamily: 'sans-serif',
       angle: displayAngle,
@@ -315,12 +321,15 @@ export class WallTool {
     if (!dimLabel) return;
 
     const scale = this.app.scale;
+    const zoom = this.app.canvas.getZoom();
     const thickness = this.app.wallThickness * scale;
     const angle = (wall.angle || 0) * Math.PI / 180;
     const midX = wall.left;
     const midY = wall.top;
 
-    const labelOffset = thickness / 2 + 12;
+    // Offset scales inversely with zoom for consistent screen gap
+    const gapPx = 10 / zoom;
+    const labelOffset = thickness / 2 + gapPx;
     const perpX = -Math.sin(angle) * labelOffset;
     const perpY = Math.cos(angle) * labelOffset;
 
@@ -336,11 +345,15 @@ export class WallTool {
       displayAngle += 180;
     }
 
+    // Font size compensated for zoom
+    const fontSize = 12 / zoom;
+
     dimLabel.set({
       left: midX + perpX,
       top: midY + perpY,
       angle: displayAngle,
       text: lengthMm + '',
+      fontSize,
     });
     dimLabel.setCoords();
   }

@@ -18,10 +18,14 @@ export class Toolbar {
     document.getElementById('btn-undo').addEventListener('click', () => this.app.history.undo());
     document.getElementById('btn-redo').addEventListener('click', () => this.app.history.redo());
 
-    // Zoom
+    // Zoom (toolbar buttons)
     document.getElementById('btn-zoom-in').addEventListener('click', () => this.app.zoomPan.zoomIn());
     document.getElementById('btn-zoom-out').addEventListener('click', () => this.app.zoomPan.zoomOut());
     document.getElementById('btn-zoom-fit').addEventListener('click', () => this.app.zoomPan.zoomFit());
+
+    // Zoom (floating canvas buttons)
+    document.getElementById('canvas-zoom-in').addEventListener('click', () => this.app.zoomPan.zoomIn());
+    document.getElementById('canvas-zoom-out').addEventListener('click', () => this.app.zoomPan.zoomOut());
 
     // Export
     document.getElementById('btn-export-png').addEventListener('click', () => this.app.exportManager.exportPNG());
