@@ -60,6 +60,15 @@ class FloorPlanApp {
     this.canvas.on('object:scaling', updateLabelOnChange);
     this.canvas.on('object:rotating', updateLabelOnChange);
 
+    // Right-click cancels any active tool (except select) and returns to select
+    this.canvas.upperCanvasEl.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (this.activeTool !== 'select') {
+        this.cancelCurrentTool();
+        this.setTool('select');
+      }
+    });
+
     // Rebuild walls when an object is removed
     this.canvas.on('object:removed', (e) => {
       if (e.target && e.target.isWall) {

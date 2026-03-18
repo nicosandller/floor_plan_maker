@@ -14,8 +14,6 @@ export class WallTool {
 
     this.onMouseDown = this.onMouseDown.bind(this);
     this.onMouseMove = this.onMouseMove.bind(this);
-    this.onContextMenu = this.onContextMenu.bind(this);
-
     // Listen for wall label edits globally
     this.setupLabelEditListener();
   }
@@ -34,28 +32,16 @@ export class WallTool {
     canvas.on('mouse:down', this.onMouseDown);
     canvas.on('mouse:move', this.onMouseMove);
 
-    // Right-click to cancel current wall segment
-    canvas.upperCanvasEl.addEventListener('contextmenu', this.onContextMenu);
+    // Show green endpoint handles on all existing walls
+    this.showAllEndpointHandles();
   }
 
   deactivate() {
     const canvas = this.app.canvas;
     canvas.off('mouse:down', this.onMouseDown);
     canvas.off('mouse:move', this.onMouseMove);
-    canvas.upperCanvasEl.removeEventListener('contextmenu', this.onContextMenu);
+    this.clearEndpointHandles();
     this.cancel();
-  }
-
-  /**
-   * Right-click cancels the current wall segment and stops drawing.
-   */
-  onContextMenu(e) {
-    e.preventDefault();
-    if (this.isDrawing) {
-      this.cancel();
-      // Return to select tool
-      this.app.setTool('select');
-    }
   }
 
   onMouseDown(opt) {
@@ -265,6 +251,9 @@ export class WallTool {
 
     // Rebuild the unified wall visuals (polylines with miter joins)
     this.app.rebuildWalls();
+
+    // Refresh endpoint handles to include the new wall's endpoints
+    this.showAllEndpointHandles();
 
     canvas.renderAll();
     this.app.history.saveState();
@@ -528,7 +517,9 @@ export class WallTool {
   snapToWallEndpoint(x, y) {
     const canvas = this.app.canvas;
     const scale = this.app.scale;
-    const snapThreshold = 50 * scale; // 50mm snap radius
+    const zoom = canvas.getZoom();
+    // 15 screen-pixels snap radius, converted to canvas coords
+    const snapThreshold = Math.max(15 / zoom, 50 * scale);
     let closest = null;
     let minDist = snapThreshold;
 
@@ -563,5 +554,85 @@ export class WallTool {
     this.isDrawing = false;
     this.startPoint = null;
     this.app.canvas.renderAll();
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Endpoint handles shown during wall drawing                        */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * Show green + circles on all existing wall endpoints so the user
+   * can visually target and snap to them while drawing.
+   */
+  showAllEndpointHandles() {
+    this.clearEndpointHandles();
+    const canvas = this.app.canvas;
+    const zoom = canvas.getZoom();
+    const radius = 7 / zoom;
+    const fontSize = 9 / zoom;
+    const strokeW = 1.5 / zoom;
+
+    if (!this._endpointHandles) this._endpointHandles = [];
+
+    canvas.forEachObject(obj => {
+      if (!obj.isWall) return;
+      const endpoints = this.getWallEndpoints(obj);
+      for (const ep of endpoints) {
+        // Avoid duplicate handles at the same position (shared endpoints)
+        const dup = this._endpointHandles.some(h =>
+          h.type === 'circle' && Math.hypot(h.epX - ep.x, h.epY - ep.y) < 2
+        );
+        if (dup) continue;
+
+        const circle = new fabric.Circle({
+          left: ep.x,
+          top: ep.y,
+          radius,
+          fill: '#22c55e',
+          stroke: '#16a34a',
+          strokeWidth: strokeW,
+          originX: 'center',
+          originY: 'center',
+          selectable: false,
+          evented: false,
+          hasControls: false,
+          hasBorders: false,
+          isEndpointHandle: true,
+          epX: ep.x,
+          epY: ep.y,
+          objectCaching: false,
+        });
+
+        const plus = new fabric.Text('+', {
+          left: ep.x,
+          top: ep.y,
+          fontSize,
+          fill: '#fff',
+          fontFamily: 'sans-serif',
+          fontWeight: 'bold',
+          originX: 'center',
+          originY: 'center',
+          selectable: false,
+          evented: false,
+          isEndpointHandle: true,
+          objectCaching: false,
+        });
+
+        canvas.add(circle);
+        canvas.add(plus);
+        this._endpointHandles.push(circle, plus);
+      }
+    });
+
+    canvas.renderAll();
+  }
+
+  clearEndpointHandles() {
+    if (!this._endpointHandles) return;
+    const canvas = this.app.canvas;
+    for (const h of this._endpointHandles) {
+      canvas.remove(h);
+    }
+    this._endpointHandles = [];
   }
 }
