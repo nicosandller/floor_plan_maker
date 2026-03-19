@@ -9,6 +9,7 @@ import { WallTool } from './tools/wall-tool.js';
 import { ShapeTool } from './tools/shape-tool.js';
 import { TextTool, DimensionTool } from './tools/text-tool.js';
 import { WindowTool } from './tools/window-tool.js';
+import { DoorTool } from './tools/door-tool.js';
 import { Toolbar } from './ui/toolbar.js';
 import { LeftPanel } from './ui/left-panel.js';
 import { RightPanel } from './ui/right-panel.js';
@@ -136,6 +137,7 @@ class FloorPlanApp {
       line: new ShapeTool(this),
       text: new TextTool(this),
       window: new WindowTool(this),
+      door: new DoorTool(this),
       dimension: new DimensionTool(this),
     };
   }

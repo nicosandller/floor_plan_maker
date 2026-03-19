@@ -173,6 +173,18 @@ body {
   margin-right: 4px;
 }
 
+.panel-section select {
+  width: 100%;
+  padding: 4px 6px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-primary);
+  font-size: 12px;
+  margin-bottom: 6px;
+  cursor: pointer;
+}
+
 /* Canvas Container */
 #canvas-container {
   flex: 1;

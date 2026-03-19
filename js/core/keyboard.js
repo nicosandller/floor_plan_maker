@@ -86,6 +86,7 @@ export class KeyboardManager {
           case 'l': this.app.setTool('line'); break;
           case 't': this.app.setTool('text'); break;
           case 'n': this.app.setTool('window'); break;
+          case 'o': this.app.setTool('door'); break;
           case 'd': this.app.setTool('dimension'); break;
         }
       }
