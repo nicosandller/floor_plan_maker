@@ -58,6 +58,24 @@ export class KeyboardManager {
         this.duplicate();
       }
 
+      // Arrow key panning
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+        const panStep = 50; // pixels per press
+        const canvas = this.app.canvas;
+        const vpt = canvas.viewportTransform;
+        switch (e.key) {
+          case 'ArrowUp':    vpt[5] += panStep; break;
+          case 'ArrowDown':  vpt[5] -= panStep; break;
+          case 'ArrowLeft':  vpt[4] += panStep; break;
+          case 'ArrowRight': vpt[4] -= panStep; break;
+        }
+        canvas.requestRenderAll();
+        this.app.grid.draw();
+        this.app.updateZoomDisplay();
+        return;
+      }
+
       // Tool shortcuts
       if (!ctrl) {
         switch (e.key.toLowerCase()) {

@@ -21,10 +21,15 @@ export class SelectTool {
     canvas.selection = true;
     canvas.defaultCursor = 'default';
     canvas.forEachObject(obj => {
-      if (!obj.isGrid && !obj.isEndpointHandle) {
-        obj.selectable = true;
-        obj.evented = true;
+      if (obj.isGrid || obj.isEndpointHandle) return;
+      // Dimension labels should never be selectable (prevents group-select issues)
+      if (obj.customType === 'wallDimension') {
+        obj.selectable = false;
+        obj.evented = true;  // still respond to double-click for editing
+        return;
       }
+      obj.selectable = true;
+      obj.evented = true;
     });
 
     canvas.on('mouse:down', this.onMouseDown);

@@ -262,6 +262,9 @@ export class WallTool {
     // Continue wall from this endpoint (allows chain-drawing)
     this.startPoint = { x: endPt.x, y: endPt.y };
     // Keep isDrawing = true so user can continue clicking
+
+    // Auto-open the length editor so user can punch in exact length
+    this.openLabelEditor(dimLabel);
   }
 
   /**
@@ -303,15 +306,10 @@ export class WallTool {
       angle: displayAngle,
       originX: 'center',
       originY: 'center',
-      selectable: true,
+      selectable: false,
       evented: true,
       hasControls: false,
       hasBorders: false,
-      lockMovementX: true,
-      lockMovementY: true,
-      lockRotation: true,
-      lockScalingX: true,
-      lockScalingY: true,
       customType: 'wallDimension',
       objectCaching: false,
       hoverCursor: 'pointer',
