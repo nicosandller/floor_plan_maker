@@ -66,7 +66,7 @@ export class WindowTool {
   }
 
   onMouseDown(opt) {
-    if (opt.e.button !== 0) return; // Only left-click
+    if (opt.e && opt.e.button && opt.e.button !== 0) return; // Only left-click
     if (this.app.zoomPan.spaceDown || this.app.zoomPan.isPanning) return;
 
     const canvas = this.app.canvas;
