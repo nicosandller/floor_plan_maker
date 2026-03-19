@@ -23,10 +23,10 @@ export class DoorTool {
   }
 
   activate() {
-    const canvas = this.app.canvas;
+    var canvas = this.app.canvas;
     canvas.selection = false;
     canvas.defaultCursor = 'crosshair';
-    canvas.forEachObject(obj => {
+    canvas.forEachObject(function(obj) {
       if (!obj.isGrid) {
         obj.selectable = false;
         obj.evented = false;
@@ -38,23 +38,23 @@ export class DoorTool {
   }
 
   deactivate() {
-    const canvas = this.app.canvas;
+    var canvas = this.app.canvas;
     canvas.off('mouse:down', this.onMouseDown);
     canvas.off('mouse:move', this.onMouseMove);
     this.clearPreview();
   }
 
   getDoorWidth() {
-    const el = document.getElementById('input-door-width');
+    var el = document.getElementById('input-door-width');
     return el ? parseInt(el.value) || 900 : 900;
   }
 
   onMouseMove(opt) {
     if (this.app.zoomPan.spaceDown || this.app.zoomPan.isPanning) return;
 
-    const canvas = this.app.canvas;
-    const pointer = canvas.getPointer(opt.e);
-    const wall = this.findWallAt(pointer.x, pointer.y);
+    var canvas = this.app.canvas;
+    var pointer = canvas.getPointer(opt.e);
+    var wall = this.findWallAt(pointer.x, pointer.y);
 
     this.clearPreview();
 
@@ -69,13 +69,12 @@ export class DoorTool {
   }
 
   onMouseDown(opt) {
-    // Accept left-click only (button 0 or undefined for touch)
     if (opt.e && opt.e.button && opt.e.button !== 0) return;
     if (this.app.zoomPan.spaceDown || this.app.zoomPan.isPanning) return;
 
-    const canvas = this.app.canvas;
-    const pointer = canvas.getPointer(opt.e);
-    const wall = this.findWallAt(pointer.x, pointer.y);
+    var canvas = this.app.canvas;
+    var pointer = canvas.getPointer(opt.e);
+    var wall = this.findWallAt(pointer.x, pointer.y);
 
     if (!wall) return;
 
@@ -84,37 +83,37 @@ export class DoorTool {
   }
 
   /* ------------------------------------------------------------------ */
-  /*  Wall geometry helpers (same as WindowTool)                         */
+  /*  Wall geometry helpers                                              */
   /* ------------------------------------------------------------------ */
 
   findWallAt(px, py) {
-    const canvas = this.app.canvas;
-    const scale = this.app.scale;
-    const hitThreshold = (this.app.wallThickness * scale) / 2 + 5;
-    let best = null;
-    let bestDist = hitThreshold;
+    var canvas = this.app.canvas;
+    var scale = this.app.scale;
+    var hitThreshold = (this.app.wallThickness * scale) / 2 + 5;
+    var best = null;
+    var bestDist = hitThreshold;
 
-    canvas.forEachObject(obj => {
+    canvas.forEachObject(function(obj) {
       if (!obj.isWall) return;
-      const dist = this.distPointToWallCenterline(px, py, obj);
+      var dist = this.distPointToWallCenterline(px, py, obj);
       if (dist < bestDist) {
         bestDist = dist;
         best = obj;
       }
-    });
+    }.bind(this));
 
     return best;
   }
 
   distPointToWallCenterline(px, py, wallObj) {
-    const endpoints = this.getWallEndpoints(wallObj);
+    var endpoints = this.getWallEndpoints(wallObj);
     return this.distPointToSegment(px, py, endpoints[0].x, endpoints[0].y, endpoints[1].x, endpoints[1].y);
   }
 
   distPointToSegment(px, py, ax, ay, bx, by) {
-    const dx = bx - ax;
-    const dy = by - ay;
-    const lenSq = dx * dx + dy * dy;
+    var dx = bx - ax;
+    var dy = by - ay;
+    var lenSq = dx * dx + dy * dy;
     if (lenSq === 0) return Math.hypot(px - ax, py - ay);
     var t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
     t = Math.max(0, Math.min(1, t));
@@ -181,8 +180,6 @@ export class DoorTool {
       left: proj.x,
       top: proj.y,
       angle: angleDeg,
-      originX: 'center',
-      originY: 'center',
       opacity: 0.7,
       selectable: false,
       evented: false,
@@ -206,13 +203,11 @@ export class DoorTool {
     var wallAngle = Math.atan2(endpoints[1].y - endpoints[0].y, endpoints[1].x - endpoints[0].x);
     var angleDeg = wallAngle * 180 / Math.PI;
 
-    var doorGroup = this.buildDoorGraphic(doorWidthPx, thickness, this.doorType, this.flipped, '#888');
+    var doorGroup = this.buildDoorGraphic(doorWidthPx, thickness, this.doorType, this.flipped, '#ccc');
     doorGroup.set({
       left: proj.x,
       top: proj.y,
       angle: angleDeg,
-      originX: 'center',
-      originY: 'center',
       isDoor: true,
       customType: 'door-on-wall',
       objectCaching: false,
@@ -241,6 +236,9 @@ export class DoorTool {
 
   /**
    * Single hinged door: wall gap + 90-degree swing arc on one side.
+   *
+   * An invisible spacer rect on the opposite side of the arc keeps the
+   * fabric.Group centered on the wall centerline.
    */
   buildSingleDoor(widthPx, thicknessPx, flipped, color) {
     var halfW = widthPx / 2;
@@ -258,22 +256,31 @@ export class DoorTool {
     // Door leaf line (from hinge perpendicular to wall)
     var hingeX = -halfW;
     objects.push(new fabric.Line([hingeX, 0, hingeX, sign * widthPx], {
-      stroke: color, strokeWidth: 1.5,
+      stroke: color, strokeWidth: 2.5,
     }));
 
     // Arc path (quarter circle showing swing)
-    var arcStr = this.buildArcPath(hingeX, 0, widthPx, flipped, false);
-    objects.push(new fabric.Path(arcStr, {
+    objects.push(new fabric.Path(this.buildArcPath(hingeX, 0, widthPx, flipped, false), {
       fill: 'transparent', stroke: color,
-      strokeWidth: 1, strokeDashArray: [3, 2],
+      strokeWidth: 1.5, strokeDashArray: [4, 3],
       objectCaching: false,
     }));
 
-    // End caps
-    objects.push(new fabric.Line([-halfW, -halfH, -halfW, halfH], { stroke: color, strokeWidth: 1 }));
-    objects.push(new fabric.Line([halfW, -halfH, halfW, halfH], { stroke: color, strokeWidth: 1 }));
+    // End caps (wall cuts)
+    objects.push(new fabric.Line([-halfW, -halfH, -halfW, halfH], { stroke: color, strokeWidth: 2 }));
+    objects.push(new fabric.Line([halfW, -halfH, halfW, halfH], { stroke: color, strokeWidth: 2 }));
 
-    return new fabric.Group(objects, { originX: 'center', originY: 'center', objectCaching: false });
+    // Invisible spacer on opposite side to keep group centered on wall
+    objects.push(new fabric.Rect({
+      left: -1, top: -sign * widthPx - 1,
+      width: 2, height: 2,
+      fill: 'transparent', stroke: 'transparent', opacity: 0,
+    }));
+
+    return new fabric.Group(objects, {
+      originX: 'center', originY: 'center',
+      objectCaching: false,
+    });
   }
 
   /**
@@ -294,25 +301,35 @@ export class DoorTool {
     }));
 
     // Left leaf
-    objects.push(new fabric.Line([-halfW, 0, -halfW, sign * leafLen], { stroke: color, strokeWidth: 1.5 }));
+    objects.push(new fabric.Line([-halfW, 0, -halfW, sign * leafLen], { stroke: color, strokeWidth: 2.5 }));
     objects.push(new fabric.Path(this.buildArcPath(-halfW, 0, leafLen, flipped, false), {
-      fill: 'transparent', stroke: color, strokeWidth: 1, strokeDashArray: [3, 2], objectCaching: false,
+      fill: 'transparent', stroke: color, strokeWidth: 1.5, strokeDashArray: [4, 3], objectCaching: false,
     }));
 
     // Right leaf
-    objects.push(new fabric.Line([halfW, 0, halfW, sign * leafLen], { stroke: color, strokeWidth: 1.5 }));
+    objects.push(new fabric.Line([halfW, 0, halfW, sign * leafLen], { stroke: color, strokeWidth: 2.5 }));
     objects.push(new fabric.Path(this.buildArcPath(halfW, 0, leafLen, flipped, true), {
-      fill: 'transparent', stroke: color, strokeWidth: 1, strokeDashArray: [3, 2], objectCaching: false,
+      fill: 'transparent', stroke: color, strokeWidth: 1.5, strokeDashArray: [4, 3], objectCaching: false,
     }));
 
     // Center divider
-    objects.push(new fabric.Line([0, -halfH, 0, halfH], { stroke: color, strokeWidth: 0.5 }));
+    objects.push(new fabric.Line([0, -halfH, 0, halfH], { stroke: color, strokeWidth: 1 }));
 
     // End caps
-    objects.push(new fabric.Line([-halfW, -halfH, -halfW, halfH], { stroke: color, strokeWidth: 1 }));
-    objects.push(new fabric.Line([halfW, -halfH, halfW, halfH], { stroke: color, strokeWidth: 1 }));
+    objects.push(new fabric.Line([-halfW, -halfH, -halfW, halfH], { stroke: color, strokeWidth: 2 }));
+    objects.push(new fabric.Line([halfW, -halfH, halfW, halfH], { stroke: color, strokeWidth: 2 }));
 
-    return new fabric.Group(objects, { originX: 'center', originY: 'center', objectCaching: false });
+    // Invisible spacer on opposite side to keep group centered on wall
+    objects.push(new fabric.Rect({
+      left: -1, top: -sign * leafLen - 1,
+      width: 2, height: 2,
+      fill: 'transparent', stroke: 'transparent', opacity: 0,
+    }));
+
+    return new fabric.Group(objects, {
+      originX: 'center', originY: 'center',
+      objectCaching: false,
+    });
   }
 
   /**
@@ -331,34 +348,37 @@ export class DoorTool {
       fill: '#1a1a2e', stroke: 'transparent', strokeWidth: 0,
     }));
 
-    // Door panel
-    var panelH = thicknessPx * 0.4;
-    var panelY = sign * (halfH - panelH / 2);
+    // Door panel (thinner rect, offset slightly to one side)
+    var panelH = thicknessPx * 0.35;
+    var panelOffsetY = sign * (halfH * 0.4);
     objects.push(new fabric.Rect({
-      left: -halfW, top: panelY - panelH / 2,
+      left: -halfW, top: panelOffsetY - panelH / 2,
       width: widthPx, height: panelH,
-      fill: 'transparent', stroke: color, strokeWidth: 1.5,
+      fill: 'transparent', stroke: color, strokeWidth: 2,
     }));
 
-    // Arrow
-    var arrowY = panelY;
-    var arrowLen = widthPx * 0.5;
+    // Arrow showing slide direction
+    var arrowY = panelOffsetY;
+    var arrowLen = widthPx * 0.4;
     var arrowStart = -arrowLen / 2;
     var arrowEnd = arrowLen / 2;
-    var headSize = Math.min(widthPx * 0.1, 6);
-    objects.push(new fabric.Line([arrowStart, arrowY, arrowEnd, arrowY], { stroke: color, strokeWidth: 1 }));
-    objects.push(new fabric.Line([arrowEnd - headSize, arrowY - headSize, arrowEnd, arrowY], { stroke: color, strokeWidth: 1 }));
-    objects.push(new fabric.Line([arrowEnd - headSize, arrowY + headSize, arrowEnd, arrowY], { stroke: color, strokeWidth: 1 }));
+    var headSize = Math.min(widthPx * 0.1, 8);
+    objects.push(new fabric.Line([arrowStart, arrowY, arrowEnd, arrowY], { stroke: color, strokeWidth: 1.5 }));
+    objects.push(new fabric.Line([arrowEnd - headSize, arrowY - headSize, arrowEnd, arrowY], { stroke: color, strokeWidth: 1.5 }));
+    objects.push(new fabric.Line([arrowEnd - headSize, arrowY + headSize, arrowEnd, arrowY], { stroke: color, strokeWidth: 1.5 }));
 
-    // Track lines
-    objects.push(new fabric.Line([-halfW, -halfH, halfW, -halfH], { stroke: color, strokeWidth: 0.8 }));
-    objects.push(new fabric.Line([-halfW, halfH, halfW, halfH], { stroke: color, strokeWidth: 0.8 }));
+    // Track lines (top and bottom of wall)
+    objects.push(new fabric.Line([-halfW, -halfH, halfW, -halfH], { stroke: color, strokeWidth: 1.5 }));
+    objects.push(new fabric.Line([-halfW, halfH, halfW, halfH], { stroke: color, strokeWidth: 1.5 }));
 
     // End caps
-    objects.push(new fabric.Line([-halfW, -halfH, -halfW, halfH], { stroke: color, strokeWidth: 1 }));
-    objects.push(new fabric.Line([halfW, -halfH, halfW, halfH], { stroke: color, strokeWidth: 1 }));
+    objects.push(new fabric.Line([-halfW, -halfH, -halfW, halfH], { stroke: color, strokeWidth: 2 }));
+    objects.push(new fabric.Line([halfW, -halfH, halfW, halfH], { stroke: color, strokeWidth: 2 }));
 
-    return new fabric.Group(objects, { originX: 'center', originY: 'center', objectCaching: false });
+    return new fabric.Group(objects, {
+      originX: 'center', originY: 'center',
+      objectCaching: false,
+    });
   }
 
   /**
@@ -368,16 +388,14 @@ export class DoorTool {
     var sign = flipped ? -1 : 1;
     var dir = mirrorX ? -1 : 1;
 
-    // Start: door perpendicular to wall
     var startX = cx;
     var startY = cy + sign * r;
-    // End: door parallel to wall
     var endX = cx + dir * r;
     var endY = cy;
 
     var sweep = (flipped === mirrorX) ? 0 : 1;
 
-    // Round coordinates to avoid floating-point SVG parsing issues
+    // Round to avoid floating-point SVG issues
     var sx = Math.round(startX * 100) / 100;
     var sy = Math.round(startY * 100) / 100;
     var ex = Math.round(endX * 100) / 100;
